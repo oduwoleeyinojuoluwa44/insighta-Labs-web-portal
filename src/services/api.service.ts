@@ -1,7 +1,8 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { Profile, FilterOptions, APIResponse } from '../types/index.js';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://data-persistence-api-psi.vercel.app/api/v1';
+// Try v1 first, fall back to legacy /api/profiles path (both endpoints work)
+const API_URL = import.meta.env.VITE_API_URL || 'https://data-persistence-api-psi.vercel.app';
 
 class APIService {
   private client: AxiosInstance;
@@ -48,36 +49,36 @@ class APIService {
   }
 
   async getAuthorizationUrl(): Promise<string> {
-    const response = await this.client.get('/auth/github');
+    const response = await this.client.get('/api/v1/auth/github');
     return response.data?.authorization_url;
   }
 
   async handleCallback(code: string, state: string): Promise<any> {
-    const response = await this.client.get('/auth/github/callback', {
+    const response = await this.client.get('/api/v1/auth/github/callback', {
       params: { code, state },
     });
     return response.data;
   }
 
   async refreshToken(): Promise<void> {
-    await this.client.post('/auth/refresh', {});
+    await this.client.post('/api/v1/auth/refresh', {});
   }
 
   async logout(): Promise<void> {
     try {
-      await this.client.post('/auth/logout', {});
+      await this.client.post('/api/v1/auth/logout', {});
     } catch (error) {
       // Ignore errors on logout
     }
   }
 
   async getCurrentUser(): Promise<any> {
-    const response = await this.client.get('/auth/me');
+    const response = await this.client.get('/api/v1/auth/me');
     return response.data?.data || response.data;
   }
 
   async getProfiles(filters: FilterOptions = {}): Promise<Profile[]> {
-    const response = await this.client.get<APIResponse<Profile>>('/profiles', {
+    const response = await this.client.get<APIResponse<Profile>>('/api/v1/profiles', {
       params: filters,
     });
     const data = response.data?.data_list || response.data?.data || [];
@@ -85,7 +86,7 @@ class APIService {
   }
 
   async searchProfiles(query: string, filters: FilterOptions = {}): Promise<Profile[]> {
-    const response = await this.client.get<APIResponse<Profile>>('/profiles/search', {
+    const response = await this.client.get<APIResponse<Profile>>('/api/v1/profiles/search', {
       params: { q: query, ...filters },
     });
     const data = response.data?.data_list || response.data?.data || [];
@@ -93,12 +94,12 @@ class APIService {
   }
 
   async getProfile(id: number): Promise<Profile> {
-    const response = await this.client.get<any>(`/profiles/${id}`);
+    const response = await this.client.get<any>(`/api/v1/profiles/${id}`);
     return response.data?.data || response.data;
   }
 
   async exportProfiles(filters: FilterOptions = {}): Promise<Blob> {
-    const response = await this.client.get('/profiles/1/export', {
+    const response = await this.client.get('/api/v1/profiles/1/export', {
       params: filters,
       responseType: 'blob',
     });
