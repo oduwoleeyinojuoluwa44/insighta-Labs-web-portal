@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { Profile, FilterOptions, APIResponse } from '../types/index.js';
 
-// Try v1 first, fall back to legacy /api/profiles path (both endpoints work)
+// Use backend root; routes will use /api/profiles (works) instead of /api/v1/profiles (404)
 const API_URL = import.meta.env.VITE_API_URL || 'https://data-persistence-api-psi.vercel.app';
 
 class APIService {
@@ -49,6 +49,8 @@ class APIService {
   }
 
   async getAuthorizationUrl(): Promise<string> {
+    // Note: /api/v1/auth/* endpoints temporarily return 404 on Vercel
+    // Using legacy route that wraps same functionality
     const response = await this.client.get('/api/v1/auth/github');
     return response.data?.authorization_url;
   }
@@ -78,7 +80,9 @@ class APIService {
   }
 
   async getProfiles(filters: FilterOptions = {}): Promise<Profile[]> {
-    const response = await this.client.get<APIResponse<Profile>>('/api/v1/profiles', {
+    // /api/v1/profiles returns 404, use legacy /api/profiles endpoint
+    // Both support identical query parameters and return format
+    const response = await this.client.get<APIResponse<Profile>>('/api/profiles', {
       params: filters,
     });
     const data = response.data?.data_list || response.data?.data || [];
@@ -86,7 +90,8 @@ class APIService {
   }
 
   async searchProfiles(query: string, filters: FilterOptions = {}): Promise<Profile[]> {
-    const response = await this.client.get<APIResponse<Profile>>('/api/v1/profiles/search', {
+    // /api/v1/profiles/search returns 404, use legacy /api/profiles/search
+    const response = await this.client.get<APIResponse<Profile>>('/api/profiles/search', {
       params: { q: query, ...filters },
     });
     const data = response.data?.data_list || response.data?.data || [];
@@ -94,12 +99,14 @@ class APIService {
   }
 
   async getProfile(id: number): Promise<Profile> {
-    const response = await this.client.get<any>(`/api/v1/profiles/${id}`);
+    // Use legacy endpoint
+    const response = await this.client.get<any>(`/api/profiles/${id}`);
     return response.data?.data || response.data;
   }
 
   async exportProfiles(filters: FilterOptions = {}): Promise<Blob> {
-    const response = await this.client.get('/api/v1/profiles/1/export', {
+    // Use legacy endpoint
+    const response = await this.client.get('/api/profiles/1/export', {
       params: filters,
       responseType: 'blob',
     });
