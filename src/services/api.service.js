@@ -1,0 +1,97 @@
+import axios from 'axios';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+class APIService {
+    constructor() {
+        Object.defineProperty(this, "client", {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: void 0
+        });
+        this.client = axios.create({
+            baseURL: API_URL,
+            withCredentials: true, // Send HTTP-only cookies
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        // Add CSRF token to mutation requests
+        this.client.interceptors.request.use((config) => {
+            if (['POST', 'PUT', 'DELETE'].includes(config.method?.toUpperCase() || '')) {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                if (csrfToken) {
+                    config.headers['X-CSRF-Token'] = csrfToken;
+                }
+            }
+            return config;
+        });
+        // Handle token refresh on 401
+        this.client.interceptors.response.use((response) => response, async (error) => {
+            if (error.response?.status === 401) {
+                try {
+                    await this.refreshToken();
+                    // Retry original request
+                    if (error.config) {
+                        return this.client(error.config);
+                    }
+                }
+                catch (refreshError) {
+                    // Redirect to login on refresh failure
+                    window.location.href = '/login';
+                }
+            }
+            return Promise.reject(error);
+        });
+    }
+    async getAuthorizationUrl() {
+        const response = await this.client.get('/auth/github');
+        return response.data?.authorization_url;
+    }
+    async handleCallback(code, state) {
+        const response = await this.client.get('/auth/github/callback', {
+            params: { code, state },
+        });
+        return response.data;
+    }
+    async refreshToken() {
+        await this.client.post('/auth/refresh', {});
+    }
+    async logout() {
+        try {
+            await this.client.post('/auth/logout', {});
+        }
+        catch (error) {
+            // Ignore errors on logout
+        }
+    }
+    async getCurrentUser() {
+        const response = await this.client.get('/auth/me');
+        return response.data?.data || response.data;
+    }
+    async getProfiles(filters = {}) {
+        const response = await this.client.get('/profiles', {
+            params: filters,
+        });
+        const data = response.data?.data_list || response.data?.data || [];
+        return Array.isArray(data) ? data : [data];
+    }
+    async searchProfiles(query, filters = {}) {
+        const response = await this.client.get('/profiles/search', {
+            params: { q: query, ...filters },
+        });
+        const data = response.data?.data_list || response.data?.data || [];
+        return Array.isArray(data) ? data : [data];
+    }
+    async getProfile(id) {
+        const response = await this.client.get(`/profiles/${id}`);
+        return response.data?.data || response.data;
+    }
+    async exportProfiles(filters = {}) {
+        const response = await this.client.get('/profiles/1/export', {
+            params: filters,
+            responseType: 'blob',
+        });
+        return response.data;
+    }
+}
+export const apiService = new APIService();
