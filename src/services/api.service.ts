@@ -78,8 +78,8 @@ class APIService {
   }
 
   async getProfiles(filters: FilterOptions = {}): Promise<Profile[]> {
-    // Use v1 endpoint now that backend is rebuilt
-    const response = await this.client.get<APIResponse<Profile>>('/api/v1/profiles', {
+    // Use legacy endpoint (Stage 2 compatible, same functionality as v1)
+    const response = await this.client.get<APIResponse<Profile>>('/api/profiles', {
       params: filters,
     });
     const data = response.data?.data_list || response.data?.data || [];
@@ -87,8 +87,8 @@ class APIService {
   }
 
   async searchProfiles(query: string, filters: FilterOptions = {}): Promise<Profile[]> {
-    // Use v1 endpoint
-    const response = await this.client.get<APIResponse<Profile>>('/api/v1/profiles/search', {
+    // Use legacy endpoint (Stage 2 compatible, same functionality as v1)
+    const response = await this.client.get<APIResponse<Profile>>('/api/profiles/search', {
       params: { q: query, ...filters },
     });
     const data = response.data?.data_list || response.data?.data || [];
@@ -96,12 +96,12 @@ class APIService {
   }
 
   async getProfile(id: number): Promise<Profile> {
-    const response = await this.client.get<any>(`/api/v1/profiles/${id}`);
+    const response = await this.client.get<any>(`/api/profiles/${id}`);
     return response.data?.data || response.data;
   }
 
   async exportProfiles(filters: FilterOptions = {}): Promise<Blob> {
-    const response = await this.client.get('/api/v1/profiles/1/export', {
+    const response = await this.client.get('/api/profiles/1/export', {
       params: filters,
       responseType: 'blob',
     });

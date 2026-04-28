@@ -70,27 +70,27 @@ class APIService {
         return response.data?.data || response.data;
     }
     async getProfiles(filters = {}) {
-        // Use v1 endpoint now that backend is rebuilt
-        const response = await this.client.get('/api/v1/profiles', {
+        // Use legacy endpoint (Stage 2 compatible, same functionality as v1)
+        const response = await this.client.get('/api/profiles', {
             params: filters,
         });
         const data = response.data?.data_list || response.data?.data || [];
         return Array.isArray(data) ? data : [data];
     }
     async searchProfiles(query, filters = {}) {
-        // Use v1 endpoint
-        const response = await this.client.get('/api/v1/profiles/search', {
+        // Use legacy endpoint (Stage 2 compatible, same functionality as v1)
+        const response = await this.client.get('/api/profiles/search', {
             params: { q: query, ...filters },
         });
         const data = response.data?.data_list || response.data?.data || [];
         return Array.isArray(data) ? data : [data];
     }
     async getProfile(id) {
-        const response = await this.client.get(`/api/v1/profiles/${id}`);
+        const response = await this.client.get(`/api/profiles/${id}`);
         return response.data?.data || response.data;
     }
     async exportProfiles(filters = {}) {
-        const response = await this.client.get('/api/v1/profiles/1/export', {
+        const response = await this.client.get('/api/profiles/1/export', {
             params: filters,
             responseType: 'blob',
         });
