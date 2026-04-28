@@ -1,5 +1,6 @@
 import axios from 'axios';
-const API_URL = import.meta.env.VITE_API_URL || 'https://data-persistence-api-psi.vercel.app/api/v1';
+// Use backend root; routes will use /api/v1/* auth endpoints
+const API_URL = import.meta.env.VITE_API_URL || 'https://data-persistence-api-psi.vercel.app';
 class APIService {
     constructor() {
         Object.defineProperty(this, "client", {
@@ -44,50 +45,52 @@ class APIService {
         });
     }
     async getAuthorizationUrl() {
-        const response = await this.client.get('/auth/github');
+        const response = await this.client.get('/api/v1/auth/github');
         return response.data?.authorization_url;
     }
     async handleCallback(code, state) {
-        const response = await this.client.get('/auth/github/callback', {
+        const response = await this.client.get('/api/v1/auth/github/callback', {
             params: { code, state },
         });
         return response.data;
     }
     async refreshToken() {
-        await this.client.post('/auth/refresh', {});
+        await this.client.post('/api/v1/auth/refresh', {});
     }
     async logout() {
         try {
-            await this.client.post('/auth/logout', {});
+            await this.client.post('/api/v1/auth/logout', {});
         }
         catch (error) {
             // Ignore errors on logout
         }
     }
     async getCurrentUser() {
-        const response = await this.client.get('/auth/me');
+        const response = await this.client.get('/api/v1/auth/me');
         return response.data?.data || response.data;
     }
     async getProfiles(filters = {}) {
-        const response = await this.client.get('/profiles', {
+        // Use v1 endpoint now that backend is rebuilt
+        const response = await this.client.get('/api/v1/profiles', {
             params: filters,
         });
         const data = response.data?.data_list || response.data?.data || [];
         return Array.isArray(data) ? data : [data];
     }
     async searchProfiles(query, filters = {}) {
-        const response = await this.client.get('/profiles/search', {
+        // Use v1 endpoint
+        const response = await this.client.get('/api/v1/profiles/search', {
             params: { q: query, ...filters },
         });
         const data = response.data?.data_list || response.data?.data || [];
         return Array.isArray(data) ? data : [data];
     }
     async getProfile(id) {
-        const response = await this.client.get(`/profiles/${id}`);
+        const response = await this.client.get(`/api/v1/profiles/${id}`);
         return response.data?.data || response.data;
     }
     async exportProfiles(filters = {}) {
-        const response = await this.client.get('/profiles/1/export', {
+        const response = await this.client.get('/api/v1/profiles/1/export', {
             params: filters,
             responseType: 'blob',
         });
