@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run build",
+  "framework": "vite",
+  "env": [
+    "VITE_API_URL",
+    "VITE_GITHUB_CLIENT_ID"
+  ]
+}
