@@ -1,39 +1,47 @@
 // Web Portal Types
 export interface User {
   id: string;
-  username: string;
+  username?: string;
   email: string;
   role: 'admin' | 'analyst';
-  github_id: string;
+  github_id?: string;
+  avatar_url?: string;
 }
 
 export interface Profile {
-  id: number;
-  first_name?: string;
-  last_name?: string;
-  gender?: string;
-  age?: number;
-  location?: string;
-  occupation?: string;
-  bio?: string;
+  id: string;
+  name: string;
+  gender: string;
+  gender_probability: number;
+  age: number;
+  age_group: string;
+  country_id: string;
+  country_name: string;
+  country_probability: number;
   created_at?: string;
-  updated_at?: string;
 }
 
 export interface FilterOptions {
   gender?: string;
-  location?: string;
-  occupation?: string;
-  age_min?: number;
-  age_max?: number;
+  country_id?: string;
+  age_group?: string;
+  min_age?: number;
+  max_age?: number;
+  page?: number;
   limit?: number;
-  offset?: number;
 }
 
 export interface APIResponse<T> {
-  data?: T;
-  data_list?: T[];
-  error?: string;
+  data?: T | T[];
+  page?: number;
+  limit?: number;
+  total?: number;
+  total_pages?: number;
+  links?: {
+    self: string;
+    next: string | null;
+    prev: string | null;
+  };
   message?: string;
-  status?: number;
+  status?: string;
 }
