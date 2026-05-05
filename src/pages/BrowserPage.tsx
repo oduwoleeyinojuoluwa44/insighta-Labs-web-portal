@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth, useProfiles } from '../hooks/index.js';
 import { Profile } from '../types/index.js';
 
@@ -6,7 +7,7 @@ export function BrowserPage() {
   const { user, logout } = useAuth();
   const { profiles, loading, error, fetchProfiles, searchProfiles, exportProfiles, setFilters } = useProfiles();
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setLocalFilters] = useState({ gender: '', location: '', occupation: '' });
+  const [filters, setLocalFilters] = useState({ gender: '', country_id: '', age_group: '' });
 
   React.useEffect(() => {
     fetchProfiles();
@@ -23,10 +24,10 @@ export function BrowserPage() {
   const handleFilter = () => {
     const filterObj = {
       gender: filters.gender || undefined,
-      location: filters.location || undefined,
-      occupation: filters.occupation || undefined,
+      country_id: filters.country_id || undefined,
+      age_group: filters.age_group || undefined,
       limit: 10,
-      offset: 0,
+      page: 1,
     };
     setFilters(filterObj);
     if (searchQuery.trim()) {
@@ -46,7 +47,10 @@ export function BrowserPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <h1>Profile Browser</h1>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <span>{user?.username}</span>
+          <span>{user?.username || user?.email}</span>
+          <Link to="/dashboard">Dashboard</Link>
+          <Link to="/search">Search</Link>
+          <Link to="/account">Account</Link>
           <button onClick={logout} style={{ padding: '8px 16px', cursor: 'pointer' }}>
             Logout
           </button>
@@ -90,15 +94,15 @@ export function BrowserPage() {
           <input
             type="text"
             placeholder="Location"
-            value={filters.location}
-            onChange={(e) => setLocalFilters({ ...filters, location: e.target.value })}
+            value={filters.country_id}
+            onChange={(e) => setLocalFilters({ ...filters, country_id: e.target.value.toUpperCase() })}
             style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
           />
           <input
             type="text"
-            placeholder="Occupation"
-            value={filters.occupation}
-            onChange={(e) => setLocalFilters({ ...filters, occupation: e.target.value })}
+            placeholder="Age group"
+            value={filters.age_group}
+            onChange={(e) => setLocalFilters({ ...filters, age_group: e.target.value })}
             style={{ padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}
           />
         </div>
@@ -146,7 +150,7 @@ export function BrowserPage() {
               }}
             >
               <h3>
-                {profile.first_name} {profile.last_name}
+                <Link to={`/profiles/${profile.id}`}>{profile.name}</Link>
               </h3>
               <p>
                 <strong>Age:</strong> {profile.age || 'N/A'}
@@ -155,12 +159,14 @@ export function BrowserPage() {
                 <strong>Gender:</strong> {profile.gender || 'N/A'}
               </p>
               <p>
-                <strong>Location:</strong> {profile.location || 'N/A'}
+                <strong>Age Group:</strong> {profile.age_group || 'N/A'}
               </p>
               <p>
-                <strong>Occupation:</strong> {profile.occupation || 'N/A'}
+                <strong>Country:</strong> {profile.country_name || profile.country_id || 'N/A'}
               </p>
-              {profile.bio && <p style={{ fontSize: '12px', color: '#666' }}>{profile.bio.substring(0, 100)}...</p>}
+              <p style={{ fontSize: '12px', color: '#666' }}>
+                Gender confidence: {profile.gender_probability} | Country confidence: {profile.country_probability}
+              </p>
             </div>
           ))}
         </div>

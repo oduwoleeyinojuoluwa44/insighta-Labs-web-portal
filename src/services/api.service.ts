@@ -1,8 +1,34 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { Profile, FilterOptions, APIResponse } from '../types/index.js';
 
-// Use backend root; routes will use /api/v1/* auth endpoints
-const API_URL = import.meta.env.VITE_API_URL || 'https://data-persistence-api-psi.vercel.app';
+// Same-origin in production; Vercel rewrites /api/* to the backend.
+const API_URL = import.meta.env.VITE_API_URL || '';
+
+type RetryableRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+
+const AUTH_REFRESH_EXEMPT_PATHS = [
+  '/api/v1/auth/github',
+  '/api/v1/auth/github/callback',
+  '/api/v1/auth/me',
+  '/api/v1/auth/refresh',
+  '/api/v1/auth/logout',
+];
+
+function shouldAttemptRefresh(config?: RetryableRequestConfig): boolean {
+  if (!config || config._retry) return false;
+
+  const requestUrl = `${config.baseURL || ''}${config.url || ''}`;
+  return !AUTH_REFRESH_EXEMPT_PATHS.some((path) => requestUrl.includes(path));
+}
+
+function normalizePagination(filters: FilterOptions): FilterOptions {
+  const legacyOffset = (filters as FilterOptions & { offset?: number }).offset;
+  const { offset: _offset, ...cleanFilters } = filters as FilterOptions & { offset?: number };
+  if (cleanFilters.page === undefined && typeof legacyOffset === 'number' && cleanFilters.limit) {
+    return { ...cleanFilters, page: Math.floor(legacyOffset / cleanFilters.limit) + 1 };
+  }
+  return cleanFilters;
+}
 
 class APIService {
   private client: AxiosInstance;
@@ -13,15 +39,19 @@ class APIService {
       withCredentials: true, // Send HTTP-only cookies
       headers: {
         'Content-Type': 'application/json',
+        'X-API-Version': '1',
       },
     });
 
     // Add CSRF token to mutation requests
     this.client.interceptors.request.use((config) => {
       if (['POST', 'PUT', 'DELETE'].includes(config.method?.toUpperCase() || '')) {
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const csrfToken = document.cookie
+          .split('; ')
+          .find((item) => item.startsWith('csrf_token='))
+          ?.split('=')[1];
         if (csrfToken) {
-          config.headers['X-CSRF-Token'] = csrfToken;
+          config.headers['X-CSRF-Token'] = decodeURIComponent(csrfToken);
         }
       }
       return config;
@@ -31,16 +61,15 @@ class APIService {
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        if (error.response?.status === 401) {
+        const originalRequest = error.config as RetryableRequestConfig | undefined;
+
+        if (error.response?.status === 401 && shouldAttemptRefresh(originalRequest)) {
           try {
+            originalRequest!._retry = true;
             await this.refreshToken();
-            // Retry original request
-            if (error.config) {
-              return this.client(error.config);
-            }
-          } catch (refreshError) {
-            // Redirect to login on refresh failure
-            window.location.href = '/login';
+            return this.client(originalRequest!);
+          } catch {
+            return Promise.reject(error);
           }
         }
         return Promise.reject(error);
@@ -49,7 +78,12 @@ class APIService {
   }
 
   async getAuthorizationUrl(): Promise<string> {
-    const response = await this.client.get('/api/v1/auth/github');
+    const response = await this.client.get('/api/v1/auth/github', {
+      params: {
+        redirect_uri: `${window.location.origin}/callback`,
+        client: 'web',
+      },
+    });
     return response.data?.authorization_url;
   }
 
@@ -78,31 +112,29 @@ class APIService {
   }
 
   async getProfiles(filters: FilterOptions = {}): Promise<Profile[]> {
-    // Use legacy endpoint (Stage 2 compatible, same functionality as v1)
-    const response = await this.client.get<APIResponse<Profile>>('/api/profiles', {
-      params: filters,
+    const response = await this.client.get<APIResponse<Profile>>('/api/v1/profiles', {
+      params: normalizePagination(filters),
     });
-    const data = response.data?.data_list || response.data?.data || [];
+    const data = response.data?.data || [];
     return Array.isArray(data) ? data : [data];
   }
 
   async searchProfiles(query: string, filters: FilterOptions = {}): Promise<Profile[]> {
-    // Use legacy endpoint (Stage 2 compatible, same functionality as v1)
-    const response = await this.client.get<APIResponse<Profile>>('/api/profiles/search', {
-      params: { q: query, ...filters },
+    const response = await this.client.get<APIResponse<Profile>>('/api/v1/profiles/search', {
+      params: { q: query, ...normalizePagination(filters) },
     });
-    const data = response.data?.data_list || response.data?.data || [];
+    const data = response.data?.data || [];
     return Array.isArray(data) ? data : [data];
   }
 
-  async getProfile(id: number): Promise<Profile> {
-    const response = await this.client.get<any>(`/api/profiles/${id}`);
+  async getProfile(id: string): Promise<Profile> {
+    const response = await this.client.get<any>(`/api/v1/profiles/${id}`);
     return response.data?.data || response.data;
   }
 
   async exportProfiles(filters: FilterOptions = {}): Promise<Blob> {
-    const response = await this.client.get('/api/profiles/1/export', {
-      params: filters,
+    const response = await this.client.get('/api/v1/profiles/export', {
+      params: { format: 'csv', ...normalizePagination(filters) },
       responseType: 'blob',
     });
     return response.data;

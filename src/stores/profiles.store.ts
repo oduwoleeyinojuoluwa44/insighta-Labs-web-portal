@@ -13,14 +13,14 @@ interface ProfilesState {
   setFilters: (filters: FilterOptions) => void;
   setTotal: (total: number) => void;
   addProfile: (profile: Profile) => void;
-  removeProfile: (id: number) => void;
+  removeProfile: (id: string) => void;
 }
 
 export const useProfilesStore = create<ProfilesState>((set) => ({
   profiles: [],
   loading: false,
   error: null,
-  filters: { limit: 10, offset: 0 },
+  filters: { limit: 10, page: 1 },
   total: 0,
   setProfiles: (profiles) => set({ profiles }),
   setLoading: (loading) => set({ loading }),
